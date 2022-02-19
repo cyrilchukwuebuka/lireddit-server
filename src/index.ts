@@ -1,11 +1,13 @@
 import { MikroORM } from "@mikro-orm/core";
 import { __prod__ } from "./constants";
 // import { Post } from "./entities/Post";
+import 'reflect-metadata'
 import mikroConfig from "./mikro-orm.config";
 import express from 'express';
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
+import { PostResolver } from "./resolvers/post";
 // import * as dotenv from "dotenv";
 
 const main = async () => {
@@ -17,15 +19,16 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver],
+      resolvers: [HelloResolver, PostResolver],
       validate: false
-    })
+    }),
+    context: () => ({ em: orm.em})
   })
 
   await apolloServer.start();
   apolloServer.applyMiddleware({ app })
   
-  app.listen(4000, () => console.log('server started on localhost:4000'))
+  app.listen(4000, () => console.log('Server started on localhost:4000'))
 
   // the below commented codes does same task as the await orm.getMigrator().up;
   // const generator = orm.getSchemaGenerator();
