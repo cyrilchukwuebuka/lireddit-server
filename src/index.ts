@@ -1,5 +1,5 @@
 import { MikroORM } from "@mikro-orm/core";
-import { __prod__ } from "./constants";
+import { COOKIE_NAME, __prod__ } from "./constants";
 import "reflect-metadata";
 import mikroConfig from "./mikro-orm.config";
 import express from "express";
@@ -10,7 +10,6 @@ import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
 // import * as dotenv from "dotenv";
 import session from "express-session";
-import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import connectRedis from "connect-redis";
 import { createClient } from "redis";
 import { MyContext } from "./types";
@@ -33,8 +32,6 @@ const main = async () => {
 
   app.use(morgan("common"));
   app.set("trust proxy", !(process.env.NODE_ENV === "production"));
-  app.set("Access-Control-Allow-Origin", "https://studio.apollographql.com");
-  app.set("Access-Control-Allow-Credentials", true);
 
   app.use(
     cors({
@@ -42,11 +39,11 @@ const main = async () => {
       origin: [
         "https://studio.apollographql.com",
         "http://localhost:4000/graphql",
+        "http://localhost:3000",
       ],
     })
   );
 
-  // console.log(process.env.NODE_ENV !== "production");
   app.set("trust proxy", process.env.NODE_ENV !== "production");
 
   app.get("/", (_, response) => {
@@ -55,7 +52,7 @@ const main = async () => {
 
   app.use(
     session({
-      name: "qid",
+      name: COOKIE_NAME,
       store: new RedisStore({
         client: redisClient as any,
         disableTouch: true,
@@ -65,11 +62,11 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
-        sameSite: "none",
-        secure: true, // cookie only works in https 
+        // sameSite: "none",
+        secure: false, // cookie when true only works in https
       },
       saveUninitialized: false,
-      secret: "keyboard cat",
+      secret: "kq7y9q2039ry97ehpx7d30323",
       resave: false,
     })
   );
@@ -79,7 +76,6 @@ const main = async () => {
       resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false,
     }),
-    plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
     context: ({ req, res }): MyContext => ({
       em: orm.em,
       req: req as any,

@@ -19,6 +19,7 @@ exports.UserResolver = void 0;
 const User_1 = require("../entities/User");
 const type_graphql_1 = require("type-graphql");
 const argon2_1 = __importDefault(require("argon2"));
+const constants_1 = require("../constants");
 let UsernamePasswordInput = class UsernamePasswordInput {
 };
 __decorate([
@@ -59,6 +60,14 @@ UserResponse = __decorate([
     (0, type_graphql_1.ObjectType)()
 ], UserResponse);
 let UserResolver = class UserResolver {
+    async me({ req, em }) {
+        if (!req.session.userId) {
+            return null;
+        }
+        console.log(req.session.userId);
+        const user = await em.findOne(User_1.User, { _id: req.session.userId });
+        return user;
+    }
     async register(options, { em }) {
         if (options.username.length <= 2) {
             return {
@@ -105,7 +114,7 @@ let UserResolver = class UserResolver {
             user,
         };
     }
-    async login(options, { em, req, res }) {
+    async login(options, { em, req }) {
         const user = await em.findOne(User_1.User, { username: options.username });
         if (!user) {
             return {
@@ -129,12 +138,28 @@ let UserResolver = class UserResolver {
             };
         }
         req.session.userId = user._id;
-        console.log(req.session);
         return {
             user,
         };
     }
+    logout({ req, res }) {
+        return new Promise((resolve) => req.session.destroy(err => {
+            res.clearCookie(constants_1.COOKIE_NAME);
+            if (err) {
+                console.log(err);
+                resolve(false);
+            }
+            resolve(true);
+        }));
+    }
 };
+__decorate([
+    (0, type_graphql_1.Query)(() => User_1.User, { nullable: true }),
+    __param(0, (0, type_graphql_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UserResolver.prototype, "me", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => UserResponse),
     __param(0, (0, type_graphql_1.Arg)("options", () => UsernamePasswordInput)),
@@ -151,6 +176,13 @@ __decorate([
     __metadata("design:paramtypes", [UsernamePasswordInput, Object]),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "login", null);
+__decorate([
+    (0, type_graphql_1.Mutation)(() => Boolean),
+    __param(0, (0, type_graphql_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], UserResolver.prototype, "logout", null);
 UserResolver = __decorate([
     (0, type_graphql_1.Resolver)()
 ], UserResolver);

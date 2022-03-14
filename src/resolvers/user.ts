@@ -7,9 +7,11 @@ import {
   InputType,
   Mutation,
   ObjectType,
+  Query,
   Resolver,
 } from "type-graphql";
 import argon2 from "argon2";
+import { COOKIE_NAME } from "../constants";
 
 @InputType()
 class UsernamePasswordInput {
@@ -39,6 +41,19 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+  @Query(() => User, {nullable: true})
+  async me(@Ctx() { req, em }: MyContext) {
+    // if user is not logged in
+    if (!req.session.userId){
+      return null;
+    }
+
+    console.log(req.session.userId);
+    const user = await em.findOne(User, {_id: req.session.userId})
+
+    return user;
+  }
+
   @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
@@ -95,7 +110,7 @@ export class UserResolver {
     // "options" can either be explicitly type inferred or declared
     // just like in the register
     @Arg("options") options: UsernamePasswordInput,
-    @Ctx() { em, req, res }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     const user = await em.findOne(User, { username: options.username });
 
@@ -121,26 +136,31 @@ export class UserResolver {
         ],
       };
     }
-    
-    // storring userId as string from number in session
-    // res.set(
-    //   "Access-Control-Allow-Origin",
-    //   "https://studio.apollographql.com"
-    // );
-    // res.set("Access-Control-Allow-Credentials", "true");
-    // res.setHeader(
-    //   "Access-Control-Allow-Origin",
-    //   "https://studio.apollographql.com"
-    // );
-    // res.setHeader("Access-Control-Allow-Credentials", "true");
-    // res.setHeader("Access-Control-Allow-Headers", " Content-Type");
-    // console.log(2222222222, user._id);
 
+    // store user id session
+    // this will set a cookie on the user
+    // keep them logged in
     req.session.userId =  user._id
-    console.log(req.session)
     
     return {
       user,
     };
+  }
+
+  @Mutation(() => Boolean)
+  logout (
+    @Ctx() { req, res }: MyContext
+  ) {
+    return new Promise((resolve) => req.session.destroy(err => {
+      // req.session.destroy() clears session in redis
+      // clears cookie in browser
+      res.clearCookie(COOKIE_NAME);
+      if (err) {
+        console.log(err);
+        resolve(false);
+      }
+
+      resolve(true);
+    }));
   }
 }
