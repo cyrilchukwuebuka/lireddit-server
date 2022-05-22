@@ -22,6 +22,8 @@ const argon2_1 = __importDefault(require("argon2"));
 const constants_1 = require("../constants");
 const UsernamePasswordInput_1 = require("../utils/UsernamePasswordInput");
 const validateRegister_1 = require("../utils/validateRegister");
+const sendEmail_1 = require("../utils/sendEmail");
+const uuid_1 = require("uuid");
 let FieldError = class FieldError {
 };
 __decorate([
@@ -57,9 +59,14 @@ let UserResolver = class UserResolver {
         const user = await em.findOne(User_1.User, { _id: req.session.userId });
         return user;
     }
-    async forgotPassword(email, { em }) {
+    async forgotPassword(email, { em, redis }) {
         const user = await em.findOne(User_1.User, { email });
-        console.log(user);
+        if (!user) {
+            return true;
+        }
+        const token = (0, uuid_1.v4)();
+        await redis.set(constants_1.FORGET_PASSWORD_PREFIX + token, user._id, 'EX', 1000 * 60 * 60 * 12);
+        (0, sendEmail_1.sendEmail)("muofunanya3@gmail.com", `<a href="http://localhost:3000/change-password/${token}">reset password</a>`);
         return true;
     }
     async register(options, { em }) {
@@ -68,12 +75,20 @@ let UserResolver = class UserResolver {
             return { errors };
         }
         const hashedPassword = await argon2_1.default.hash(options.password);
-        const user = em.create(User_1.User, {
-            username: options.username,
-            password: hashedPassword,
-        });
+        let user;
         try {
-            await em.persistAndFlush(user);
+            const result = await em
+                .createQueryBuilder(User_1.User)
+                .getKnexQuery()
+                .insert({
+                username: options.username,
+                email: options.email,
+                password: hashedPassword,
+                created_at: new Date(),
+                updated_at: new Date()
+            })
+                .returning("*");
+            user = result[0];
         }
         catch (err) {
             if (err.code === "23505") {
@@ -100,8 +115,18 @@ let UserResolver = class UserResolver {
             return {
                 errors: [
                     {
-                        field: "username",
-                        message: "that username doesn't exist",
+                        field: "usernameOrEmail",
+                        message: "username doesn't exist",
+                    },
+                ],
+            };
+        }
+        if (!password) {
+            return {
+                errors: [
+                    {
+                        field: "password",
+                        message: "empty field",
                     },
                 ],
             };

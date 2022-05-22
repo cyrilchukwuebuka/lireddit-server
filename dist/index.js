@@ -15,12 +15,12 @@ const post_1 = require("./resolvers/post");
 const user_1 = require("./resolvers/user");
 const express_session_1 = __importDefault(require("express-session"));
 const connect_redis_1 = __importDefault(require("connect-redis"));
-const redis_1 = require("redis");
+const ioredis_1 = __importDefault(require("ioredis"));
 const morgan_1 = __importDefault(require("morgan"));
 const cors_1 = __importDefault(require("cors"));
 let RedisStore = (0, connect_redis_1.default)(express_session_1.default);
-let redisClient = (0, redis_1.createClient)({ legacyMode: true, });
-redisClient.connect().catch(console.error);
+let redis = new ioredis_1.default();
+redis.connect().catch(console.error);
 const main = async () => {
     const orm = await core_1.MikroORM.init(mikro_orm_config_1.default);
     await orm.getMigrator().up;
@@ -44,7 +44,7 @@ const main = async () => {
     app.use((0, express_session_1.default)({
         name: constants_1.COOKIE_NAME,
         store: new RedisStore({
-            client: redisClient,
+            client: redis,
             disableTouch: true,
             host: "localhost",
             port: 6379,
@@ -68,6 +68,7 @@ const main = async () => {
             em: orm.em,
             req: req,
             res,
+            redis,
         }),
     });
     await apolloServer.start();

@@ -8,29 +8,20 @@ import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-// import * as dotenv from "dotenv";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import { createClient } from "redis";
+// import { createClient } from "redis";
+import Redis from 'ioredis'
 import { MyContext } from "./types";
 import morgan from "morgan";
 import cors from "cors";
-// import { request as sendMail } from "./utils/sendEmail";
 
 let RedisStore = connectRedis(session);
-let redisClient = createClient({legacyMode: true, });
-redisClient.connect().catch(console.error);
+// let redisClient = createClient({legacyMode: true, });
+let redis = new Redis();
+redis.connect().catch(console.error);
 
 const main = async () => {
-  // dotenv.config();
-  // await sendEmail('bob@bob.com', "Hello there")
-  // sendMail
-  //   .then((result) => {
-  //     console.log(result.body);
-  //   })
-  //   .catch((err) => {
-  //     console.log(err.statusCode);
-  //   });
   const orm = await MikroORM.init(mikroConfig);
   await orm.getMigrator().up;
 
@@ -63,7 +54,7 @@ const main = async () => {
     session({
       name: COOKIE_NAME,
       store: new RedisStore({
-        client: redisClient as any,
+        client: redis as any,
         disableTouch: true,
         host: "localhost",
         port: 6379,
@@ -89,6 +80,7 @@ const main = async () => {
       em: orm.em,
       req: req as any,
       res,
+      redis,
     }),
   });
 

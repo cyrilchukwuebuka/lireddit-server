@@ -10,10 +10,13 @@ import {
   Resolver,
 } from "type-graphql";
 import argon2 from "argon2";
-import { COOKIE_NAME } from "../constants";
+import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
 // import { EntityManager } from "@mikro-orm/postgresql";
 import { UsernamePasswordInput } from "../utils/UsernamePasswordInput";
 import { validateRegister } from "../utils/validateRegister";
+import { EntityManager } from "@mikro-orm/postgresql";
+import { sendEmail } from "../utils/sendEmail";
+import { v4 } from 'uuid';
 
 @ObjectType()
 class FieldError {
@@ -49,9 +52,23 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() { em }: MyContext) {
+  async forgotPassword(@Arg("email") email: string, @Ctx() { em, redis }: MyContext) {
     const user = await em.findOne(User, { email });
-    console.log(user)
+    
+    if(!user) {
+      // email does not exist
+      // and wouldn't want the user to keep on trying several emails
+      return true;
+    }
+
+    const token = v4();
+    await redis.set(FORGET_PASSWORD_PREFIX + token, user._id, 'EX', 1000 * 60 * 60 * 12)
+
+    sendEmail(
+      "muofunanya3@gmail.com",
+      `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
+    );
+    
     return true;
   }
 
@@ -66,30 +83,32 @@ export class UserResolver {
     }
     
     const hashedPassword = await argon2.hash(options.password);
-    const user = em.create(User, {
-      username: options.username,
-      password: hashedPassword,
-    });
+    // const user = em.create(User, {
+    //   username: options.username,
+    //   password: hashedPassword,
+    // });
+
+    // try {
+    //   await em.persistAndFlush(user);
+    // } 
 
     // alternative
-    // let user;
-    // try {
-    //   const result = await(em as EntityManager)
-    //     .createQueryBuilder(User)
-    //     .getKnexQuery()
-    //     .insert({
-    //       username: options.username,
-    //       email: options.email,
-    //       password: hashedPassword,
-    //       created_at: new Date(),
-    //       updated_at: new Date()
-    //     })
-    //     .returning("*");
-    //   user = result[0];
-    // }
+    let user;
     try {
-      await em.persistAndFlush(user);
-    } catch (err) {
+      const result = await(em as EntityManager)
+        .createQueryBuilder(User)
+        .getKnexQuery()
+        .insert({
+          username: options.username,
+          email: options.email,
+          password: hashedPassword,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+        .returning("*");
+      user = result[0];
+    }
+    catch (err) {
       if (err.code === "23505") {
         return {
           errors: [
@@ -124,12 +143,24 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "username",
-            message: "that username doesn't exist",
+            field: "usernameOrEmail",
+            message: "username doesn't exist",
           },
         ],
       };
     }
+
+    if (!password) {
+      return {
+        errors: [
+          {
+            field: "password",
+            message: "empty field",
+          },
+        ],
+      };
+    }
+
     const validPassword = await argon2.verify(user.password, password);
 
     if (!validPassword) {
