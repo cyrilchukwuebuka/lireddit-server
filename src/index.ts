@@ -15,6 +15,7 @@ import { createClient } from "redis";
 import { MyContext } from "./types";
 import morgan from "morgan";
 import cors from "cors";
+// import { request as sendMail } from "./utils/sendEmail";
 
 let RedisStore = connectRedis(session);
 let redisClient = createClient({legacyMode: true, });
@@ -22,6 +23,14 @@ redisClient.connect().catch(console.error);
 
 const main = async () => {
   // dotenv.config();
+  // await sendEmail('bob@bob.com', "Hello there")
+  // sendMail
+  //   .then((result) => {
+  //     console.log(result.body);
+  //   })
+  //   .catch((err) => {
+  //     console.log(err.statusCode);
+  //   });
   const orm = await MikroORM.init(mikroConfig);
   await orm.getMigrator().up;
 
@@ -62,8 +71,8 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
-        // sameSite: "none",
-        secure: false, // cookie when true only works in https
+        sameSite: "none",
+        secure: __prod__, // cookie when true only works in https
       },
       saveUninitialized: false,
       secret: "kq7y9q2039ry97ehpx7d30323",
