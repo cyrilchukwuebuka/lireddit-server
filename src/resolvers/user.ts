@@ -13,10 +13,11 @@ import argon2 from "argon2";
 import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
 // import { EntityManager } from "@mikro-orm/postgresql";
 import { UsernamePasswordInput } from "../utils/UsernamePasswordInput";
-import { validateRegister } from "../utils/validateRegister";
+import { validateRegister, validatePassword } from "../utils/validateInputs";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { sendEmail } from "../utils/sendEmail";
 import { v4 } from 'uuid';
+import { errorMessage } from "../utils/errorMessage";
 
 @ObjectType()
 class FieldError {
@@ -51,6 +52,43 @@ export class UserResolver {
     return user;
   }
 
+  @Mutation(() => UserResponse)
+  async changePassword (
+    @Arg("token") token: string,
+    @Arg("newPassword") newPassword: string,
+    @Ctx() { redis, em, req }: MyContext
+  ): Promise<UserResponse> {
+    const errors = validatePassword(newPassword);
+    if (errors) {
+      return { errors };
+    }
+
+    const key = FORGET_PASSWORD_PREFIX + token;
+
+    const userId = await redis.get(key);
+    if (!userId) {
+        return errorMessage("token", "token expired or invalid");
+    }
+
+    const user = await em.findOne(User, { _id: parseInt(userId) });
+
+    if (!user) {
+        return errorMessage("token", "user no longer exists");
+    }
+
+    user.password = await argon2.hash(newPassword);
+    await em.persistAndFlush(user);
+
+    await redis.del(key);
+
+    // log in user after change password
+    req.session.userId = user._id;
+
+    return {
+      user
+    }
+  }
+
   @Mutation(() => Boolean)
   async forgotPassword(@Arg("email") email: string, @Ctx() { em, redis }: MyContext) {
     const user = await em.findOne(User, { email });
@@ -65,7 +103,7 @@ export class UserResolver {
     await redis.set(FORGET_PASSWORD_PREFIX + token, user._id, 'EX', 1000 * 60 * 60 * 12)
 
     sendEmail(
-      "muofunanya3@gmail.com",
+      email,
       `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
     );
     
@@ -109,18 +147,12 @@ export class UserResolver {
       user = result[0];
     }
     catch (err) {
-      if (err.code === "23505") {
-        return {
-          errors: [
-            {
-              field: "username",
-              message: "username already taken",
-            },
-          ],
-        };
-      }
       console.log(err.message);
+      if (err.code === "23505") {
+        return errorMessage("username", "username already taken");
+      }
     }
+
     return {
       user,
     };
@@ -140,38 +172,17 @@ export class UserResolver {
     );
 
     if (!user) {
-      return {
-        errors: [
-          {
-            field: "usernameOrEmail",
-            message: "username doesn't exist",
-          },
-        ],
-      };
+      return errorMessage("usernameOrEmail", "username doesn't exist");
     }
 
     if (!password) {
-      return {
-        errors: [
-          {
-            field: "password",
-            message: "empty field",
-          },
-        ],
-      };
+      return errorMessage("password", "empty field");
     }
 
     const validPassword = await argon2.verify(user.password, password);
 
     if (!validPassword) {
-      return {
-        errors: [
-          {
-            field: "password",
-            message: "incorrect password",
-          },
-        ],
-      };
+      return errorMessage("password", "incorrect password");
     }
 
     // store user id session

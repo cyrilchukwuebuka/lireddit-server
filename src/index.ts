@@ -15,6 +15,9 @@ import Redis from 'ioredis'
 import { MyContext } from "./types";
 import morgan from "morgan";
 import cors from "cors";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 let RedisStore = connectRedis(session);
 // let redisClient = createClient({legacyMode: true, });
@@ -66,7 +69,7 @@ const main = async () => {
         secure: __prod__, // cookie when true only works in https
       },
       saveUninitialized: false,
-      secret: "kq7y9q2039ry97ehpx7d30323",
+      secret: process.env.SESSION_SECRET || '',
       resave: false,
     })
   );

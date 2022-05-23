@@ -8,7 +8,7 @@ const mailjet = node_mailjet.connect(
   process.env.MAIL_API_SECRET || ""
 );
 
-export const sendEmail = async (to: string, message: string= '') => {
+export const sendEmail = async (email: string, message: string= '') => {
   const request = await mailjet.post("send", { version: "v3.1" }).request({
     Messages: [
       {
@@ -18,13 +18,12 @@ export const sendEmail = async (to: string, message: string= '') => {
         },
         To: [
           {
-            Email: to,
+            Email: email,
             Name: "Chukwuebuka",
           },
         ],
         Subject: "Greetings from Mailjet.",
         TextPart: "message",
-        // HTMLPart: "<h3>Dear passenger 1, welcome to <a href='https://www.mailjet.com/'>Mailjet</a>!</h3><br />May the delivery force be with you!",
         HTMLPart: message,
         CustomID: "AppGettingStartedTest",
       },
@@ -37,13 +36,5 @@ export const sendEmail = async (to: string, message: string= '') => {
   } catch (err) {
     console.log(err)
   }
-
-  
-  // request.then((result) => {
-  //     console.log(result.body);
-  //   })
-  //   .catch((err) => {
-  //     console.log(err.statusCode);
-  //   });
 }
 

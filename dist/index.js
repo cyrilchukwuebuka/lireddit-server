@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,6 +37,8 @@ const connect_redis_1 = __importDefault(require("connect-redis"));
 const ioredis_1 = __importDefault(require("ioredis"));
 const morgan_1 = __importDefault(require("morgan"));
 const cors_1 = __importDefault(require("cors"));
+const dotenv = __importStar(require("dotenv"));
+dotenv.config();
 let RedisStore = (0, connect_redis_1.default)(express_session_1.default);
 let redis = new ioredis_1.default();
 redis.connect().catch(console.error);
@@ -56,7 +77,7 @@ const main = async () => {
             secure: constants_1.__prod__,
         },
         saveUninitialized: false,
-        secret: "kq7y9q2039ry97ehpx7d30323",
+        secret: process.env.SESSION_SECRET || '',
         resave: false,
     }));
     const apolloServer = new apollo_server_express_1.ApolloServer({

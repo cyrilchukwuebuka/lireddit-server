@@ -40,3 +40,16 @@ export const validateRegister = (options: UsernamePasswordInput) => {
 
   return null;
 };
+
+export const validatePassword = (newPassword: string) => {
+  if (newPassword.length <= 3) {
+    return [
+      {
+        field: "newPassword",
+        message: "length must be greater than 3",
+      },
+    ];
+  }
+
+  return null;
+}
