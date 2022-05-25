@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostResolver = void 0;
 const Post_1 = require("../entities/Post");
 const type_graphql_1 = require("type-graphql");
+const isAuth_1 = require("../middleware/isAuth");
 let PostInput = class PostInput {
 };
 __decorate([
@@ -36,9 +37,6 @@ let PostResolver = class PostResolver {
         return Post_1.Post.findOneBy({ _id });
     }
     async createPost(input, { req }) {
-        if (!req.session.userId) {
-            throw new Error("not authenticated");
-        }
         return Post_1.Post.create(Object.assign(Object.assign({}, input), { creatorId: req.session.userId })).save();
     }
     async updatePost(_id, title) {
@@ -77,7 +75,8 @@ __decorate([
 ], PostResolver.prototype, "post", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => Post_1.Post),
-    __param(0, (0, type_graphql_1.Arg)("title", () => String)),
+    (0, type_graphql_1.UseMiddleware)(isAuth_1.isAuth),
+    __param(0, (0, type_graphql_1.Arg)("input", () => PostInput)),
     __param(1, (0, type_graphql_1.Ctx)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [PostInput, Object]),
