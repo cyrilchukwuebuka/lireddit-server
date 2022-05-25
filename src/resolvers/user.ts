@@ -11,13 +11,12 @@ import {
 } from "type-graphql";
 import argon2 from "argon2";
 import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
-// import { EntityManager } from "@mikro-orm/postgresql";
 import { UsernamePasswordInput } from "../utils/UsernamePasswordInput";
 import { validateRegister, validatePassword } from "../utils/validateInputs";
-import { EntityManager } from "@mikro-orm/postgresql";
 import { sendEmail } from "../utils/sendEmail";
 import { v4 } from 'uuid';
 import { errorMessage } from "../utils/errorMessage";
+import { getConnection } from "typeorm";
 
 @ObjectType()
 class FieldError {
@@ -40,23 +39,21 @@ class UserResponse {
 @Resolver()
 export class UserResolver {
   @Query(() => User, { nullable: true })
-  async me(@Ctx() { req, em }: MyContext) {
+  me(@Ctx() { req }: MyContext) {
     // if user is not logged in
     if (!req.session.userId) {
       return null;
     }
 
     console.log(req.session.userId);
-    const user = await em.findOne(User, { _id: req.session.userId });
-
-    return user;
+    return User.findOneBy({ _id: req.session.userId });
   }
 
   @Mutation(() => UserResponse)
   async changePassword (
     @Arg("token") token: string,
     @Arg("newPassword") newPassword: string,
-    @Ctx() { redis, em, req }: MyContext
+    @Ctx() { redis, req }: MyContext
   ): Promise<UserResponse> {
     const errors = validatePassword(newPassword);
     if (errors) {
@@ -70,14 +67,20 @@ export class UserResolver {
         return errorMessage("token", "token expired or invalid");
     }
 
-    const user = await em.findOne(User, { _id: parseInt(userId) });
+    const _id = parseInt(userId)
+    const user = await User.findOneBy({ _id });
 
     if (!user) {
         return errorMessage("token", "user no longer exists");
     }
-
-    user.password = await argon2.hash(newPassword);
-    await em.persistAndFlush(user);
+    
+    const hashedPassword = await argon2.hash(newPassword);
+    await User.update(
+      { _id },
+      {
+        password: hashedPassword,
+      }
+    );
 
     await redis.del(key);
 
@@ -90,8 +93,8 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() { em, redis }: MyContext) {
-    const user = await em.findOne(User, { email });
+  async forgotPassword(@Arg("email") email: string, @Ctx() { redis }: MyContext) {
+    const user = await User.findOne({where: { email } });
     
     if(!user) {
       // email does not exist
@@ -113,7 +116,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { req }: MyContext
   ): Promise<UserResponse> {
     const errors = validateRegister(options);
     if (errors) {
@@ -133,25 +136,29 @@ export class UserResolver {
     // alternative
     let user;
     try {
-      const result = await(em as EntityManager)
-        .createQueryBuilder(User)
-        .getKnexQuery()
-        .insert({
-          username: options.username,
-          email: options.email,
-          password: hashedPassword,
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-        .returning("*");
-      user = result[0];
+      // const user = await User.create({
+      //   username: options.username,
+      //   email: options.email,
+      //   password: hashedPassword,
+      // }).save();
+      // The above is same as the getConnection... meethods below
+      
+      const result = await getConnection().createQueryBuilder().insert().into(User).values({
+        username: options.username,
+        email: options.email,
+        password: hashedPassword,
+      })
+      .returning("*")
+      .execute();
+      user = result.raw[0];
     }
     catch (err) {
-      console.log(err.message);
       if (err.code === "23505") {
         return errorMessage("username", "username already taken");
       }
     }
+
+    req.session.userId = user._id;
 
     return {
       user,
@@ -164,12 +171,12 @@ export class UserResolver {
     // just like in the register
     @Arg("usernameOrEmail") usernameOrEmail: string,
     @Arg("password") password: string,
-    @Ctx() { em, req }: MyContext
+    @Ctx() { req }: MyContext
   ): Promise<UserResponse> {
-    const user = await em.findOne(User, usernameOrEmail.includes("@") ? 
+    const user = await User.findOne({where: usernameOrEmail.includes("@") ? 
       { email: usernameOrEmail } :
       { username: usernameOrEmail }
-    );
+    });
 
     if (!user) {
       return errorMessage("usernameOrEmail", "username doesn't exist");

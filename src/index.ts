@@ -1,7 +1,5 @@
-import { MikroORM } from "@mikro-orm/core";
-import { COOKIE_NAME, __prod__ } from "./constants";
 import "reflect-metadata";
-import mikroConfig from "./mikro-orm.config";
+import { COOKIE_NAME, loginDetails, __prod__ } from "./constants";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
@@ -10,26 +8,31 @@ import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
 import session from "express-session";
 import connectRedis from "connect-redis";
-// import { createClient } from "redis";
 import Redis from 'ioredis'
 import { MyContext } from "./types";
 import morgan from "morgan";
 import cors from "cors";
 import * as dotenv from "dotenv";
+import { createConnection } from 'typeorm'
+import { Post } from "./entities/Post";
+import { User } from "./entities/User";
 
 dotenv.config();
 
-let RedisStore = connectRedis(session);
-// let redisClient = createClient({legacyMode: true, });
-let redis = new Redis();
-redis.connect().catch(console.error);
-
 const main = async () => {
-  const orm = await MikroORM.init(mikroConfig);
-  await orm.getMigrator().up;
+  let RedisStore = connectRedis(session);
+  let redis = new Redis();
+  redis.connect().catch(console.error);
 
-  const generator = orm.getSchemaGenerator();
-  await generator.updateSchema();
+  const conn = await createConnection({
+    type: "postgres",
+    database: "lireddit2",
+    username: loginDetails.user,
+    password: loginDetails.password,
+    logging: "all",
+    synchronize: true,
+    entities: [Post, User]
+  });
 
   const app = express();
 
@@ -65,7 +68,7 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
-        sameSite: "none",
+        sameSite: "lax",
         secure: __prod__, // cookie when true only works in https
       },
       saveUninitialized: false,
@@ -80,7 +83,6 @@ const main = async () => {
       validate: false,
     }),
     context: ({ req, res }): MyContext => ({
-      em: orm.em,
       req: req as any,
       res,
       redis,
