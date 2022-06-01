@@ -1,21 +1,20 @@
-import "reflect-metadata";
-import { COOKIE_NAME, loginDetails, __prod__ } from "./constants";
-import express from "express";
 import { ApolloServer } from "apollo-server-express";
+import connectRedis from "connect-redis";
+import cors from "cors";
+import * as dotenv from "dotenv";
+import express from "express";
+import session from "express-session";
+import Redis from 'ioredis';
+import morgan from "morgan";
+import "reflect-metadata";
 import { buildSchema } from "type-graphql";
+import { createConnection } from 'typeorm';
+import { COOKIE_NAME, __prod__ } from "./constants";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-import session from "express-session";
-import connectRedis from "connect-redis";
-import Redis from 'ioredis'
+import { typeormConfig } from "./typeormConfig";
 import { MyContext } from "./types";
-import morgan from "morgan";
-import cors from "cors";
-import * as dotenv from "dotenv";
-import { createConnection } from 'typeorm'
-import { Post } from "./entities/Post";
-import { User } from "./entities/User";
 
 dotenv.config();
 
@@ -24,15 +23,8 @@ const main = async () => {
   let redis = new Redis();
   redis.connect().catch(console.error);
 
-  const conn = await createConnection({
-    type: "postgres",
-    database: "lireddit2",
-    username: loginDetails.user,
-    password: loginDetails.password,
-    logging: "all",
-    synchronize: true,
-    entities: [Post, User]
-  });
+  const conn = await createConnection(typeormConfig);
+  await conn.runMigrations()
 
   const app = express();
 

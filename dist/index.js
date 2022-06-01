@@ -22,37 +22,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-require("reflect-metadata");
-const constants_1 = require("./constants");
-const express_1 = __importDefault(require("express"));
 const apollo_server_express_1 = require("apollo-server-express");
+const connect_redis_1 = __importDefault(require("connect-redis"));
+const cors_1 = __importDefault(require("cors"));
+const dotenv = __importStar(require("dotenv"));
+const express_1 = __importDefault(require("express"));
+const express_session_1 = __importDefault(require("express-session"));
+const ioredis_1 = __importDefault(require("ioredis"));
+const morgan_1 = __importDefault(require("morgan"));
+require("reflect-metadata");
 const type_graphql_1 = require("type-graphql");
+const typeorm_1 = require("typeorm");
+const constants_1 = require("./constants");
 const hello_1 = require("./resolvers/hello");
 const post_1 = require("./resolvers/post");
 const user_1 = require("./resolvers/user");
-const express_session_1 = __importDefault(require("express-session"));
-const connect_redis_1 = __importDefault(require("connect-redis"));
-const ioredis_1 = __importDefault(require("ioredis"));
-const morgan_1 = __importDefault(require("morgan"));
-const cors_1 = __importDefault(require("cors"));
-const dotenv = __importStar(require("dotenv"));
-const typeorm_1 = require("typeorm");
-const Post_1 = require("./entities/Post");
-const User_1 = require("./entities/User");
+const typeormConfig_1 = require("./typeormConfig");
 dotenv.config();
 const main = async () => {
     let RedisStore = (0, connect_redis_1.default)(express_session_1.default);
     let redis = new ioredis_1.default();
     redis.connect().catch(console.error);
-    const conn = await (0, typeorm_1.createConnection)({
-        type: "postgres",
-        database: "lireddit2",
-        username: constants_1.loginDetails.user,
-        password: constants_1.loginDetails.password,
-        logging: "all",
-        synchronize: true,
-        entities: [Post_1.Post, User_1.User]
-    });
+    const conn = await (0, typeorm_1.createConnection)(typeormConfig_1.typeormConfig);
+    await conn.runMigrations();
     const app = (0, express_1.default)();
     app.use((0, morgan_1.default)("common"));
     app.set("trust proxy", !(process.env.NODE_ENV === "production"));
