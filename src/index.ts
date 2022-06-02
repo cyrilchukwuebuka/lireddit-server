@@ -10,6 +10,7 @@ import "reflect-metadata";
 import { buildSchema } from "type-graphql";
 import { createConnection } from 'typeorm';
 import { COOKIE_NAME, __prod__ } from "./constants";
+import { Post } from "./entities/Post";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
@@ -24,7 +25,8 @@ const main = async () => {
   redis.connect().catch(console.error);
 
   const conn = await createConnection(typeormConfig);
-  await conn.runMigrations()
+  await conn.runMigrations();
+  // await Post.delete({})
 
   const app = express();
 

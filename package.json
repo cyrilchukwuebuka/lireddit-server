@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "start2": "ts-node src/index.ts",
     "dev2": "nodemon --exec ts-node src/index.ts",
-    "create:migration": "npx typeorm migration:create ./src/migrations/migration"
+    "create:migration": "npx typeorm migration:create ./src/migrations/MockPosts"
   },
   "keywords": [],
   "author": "",
