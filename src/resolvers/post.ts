@@ -33,19 +33,53 @@ export class PostResolver {
   ): Promise<PaginatedPosts> {
     const actualLimit = Math.min(30, limit);
     const actualLimitPlusOne = actualLimit + 1;
-    const queryBuilder = getConnection()
-      .getRepository(Post)
-      .createQueryBuilder("post")
-      .orderBy('"createdAt"', "DESC")
-      .take(actualLimitPlusOne);
+
+    const replacements: any[] = [actualLimitPlusOne];
 
     if (cursor) {
-      queryBuilder.where('"createdAt" < :cursor', {
-        cursor: new Date(parseFloat(cursor)),
-      });
-    }
+      replacements.push(new Date(parseFloat(cursor)));
+    } 
 
-    const posts = await queryBuilder.getMany();
+    const posts = await getConnection().query(
+      `
+    select p.*, 
+    json_build_object(
+      '_id', u._id,
+      'username', u.username,
+      'email', u.email,
+      'createdAt', u."createdAt",
+      'updatedAt', u."updatedAt"
+    ) creator
+    from post p
+    inner join public.user u on u._id = p."creatorId"
+    ${cursor ? `where p."createdAt" < $2` : ""}
+    order by p."createdAt" DESC
+    limit $1
+
+    `,
+      replacements
+    );
+    
+    console.log(posts)
+
+    // const queryBuilder = getConnection()
+    //   .getRepository(Post)
+    //   .createQueryBuilder("post")
+    //   .innerJoinAndSelect(
+    //     "post.creator",
+    //     "creator",
+    //     'creator.id = post."creatorId"',
+    //   )
+    //   .orderBy('post."createdAt"', "DESC")
+    //   .take(actualLimitPlusOne);
+
+    // if (cursor) {
+    //   queryBuilder.where('post."createdAt" < :cursor', {
+    //     cursor: new Date(parseFloat(cursor)),
+    //   });
+    // }
+
+    // const posts = await queryBuilder.getMany();
 
     return {
       posts: posts.slice(0, actualLimit),
