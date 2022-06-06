@@ -1,6 +1,7 @@
 import path from "path";
 import { loginDetails } from "./constants";
 import { Post } from "./entities/Post";
+import { Updoot } from "./entities/Updoot";
 import { User } from "./entities/User";
 
 export const typeormConfig = {
@@ -10,7 +11,7 @@ export const typeormConfig = {
   password: loginDetails.password,
   logging: "all",
   synchronize: true,
-  entities: [Post, User],
+  entities: [Post, User, Updoot],
   migrationsTableName: "FakePosts",
   migrations: [path.join(__dirname, "./migrations/*")],
   cli: {

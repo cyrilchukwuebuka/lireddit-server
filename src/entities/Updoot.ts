@@ -7,15 +7,13 @@ import { User } from "./User";
 @ObjectType()
 @Entity()
 export class Updoot extends BaseEntity {
-  @Field()
   @Column({ type: "int" })
   value: number;
 
-  @Field()
   @PrimaryColumn()
   userId: number;
 
-  @Field()
+  @Field(() => User)
   @ManyToOne(() => User, (user) => user.updoots)
   user: User;
 
@@ -23,7 +21,7 @@ export class Updoot extends BaseEntity {
   @PrimaryColumn()
   postId: number;
 
-  @Field()
+  @Field(() => Post)
   @ManyToOne(() => Post, (post) => post.updoots)
   post: Post;
 }
