@@ -1,16 +1,30 @@
 import { Post } from "../entities/Post";
-import { Arg, Ctx, Field, FieldResolver, InputType, Int, Mutation, ObjectType, Query, Resolver, Root, UseMiddleware } from "type-graphql";
+import {
+  Arg,
+  Ctx,
+  Field,
+  FieldResolver,
+  InputType,
+  Int,
+  Mutation,
+  ObjectType,
+  Query,
+  Resolver,
+  Root,
+  UseMiddleware,
+} from "type-graphql";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
+import { User } from "../entities/User";
 @InputType()
 class PostInput {
   @Field()
-  title: string
-  
+  title: string;
+
   @Field()
-  text: string
+  text: string;
 }
 @ObjectType()
 class PaginatedPosts {
@@ -32,16 +46,37 @@ export class PostResolver {
   async vote(
     @Arg("postId", () => Int) postId: number,
     @Arg("value", () => Int) value: number,
-    @Ctx() {req}: MyContext
+    @Ctx() { req }: MyContext
   ) {
     const isUpdoot = value !== -1;
-    const realValue = isUpdoot ? 1 : -1
-    const {userId} = req.session
-    await Updoot.insert({
-      userId,
-      postId,
-      value: realValue,
-    });
+    const realValue = isUpdoot ? 1 : -1;
+    const { userId } = req.session;
+    
+    // await Updoot.insert({
+    //   userId,
+    //   postId,
+    //   value: realValue,
+    // });
+
+    // await getConnection()
+    //   .createQueryBuilder()
+    //   .insert()
+    //   .into(Updoot)
+    //   .values({
+    //     userId,
+    //     postId,
+    //     value: realValue,
+    //   })
+    //   .execute();
+
+    // await getConnection()
+    //   .createQueryBuilder()
+    //   .update(Post)
+    //   .set({ points: () => `points + ${realValue}` })
+    //   .where("_id = :id", { id: `${postId}` })
+    //   .execute();
+
+
     await getConnection().query(
       `
 
@@ -49,18 +84,17 @@ export class PostResolver {
 
     insert into updoot ("userId", "postId", value)
     values (${userId},${postId},${realValue});
-    
+
     update post
     set points = points + ${realValue}
-    where id = ${postId};
-    
+    where _id = ${postId};
+
     COMMIT;
 
-    `,
-      [userId, postId, realValue, realValue, postId]
+    `
     );
 
-    return true
+    return true;
   }
 
   @Query(() => PaginatedPosts)
@@ -75,7 +109,7 @@ export class PostResolver {
 
     if (cursor) {
       replacements.push(new Date(parseFloat(cursor)));
-    } 
+    }
 
     const posts = await getConnection().query(
       `
@@ -96,8 +130,6 @@ export class PostResolver {
     `,
       replacements
     );
-    
-    console.log(posts)
 
     // const queryBuilder = getConnection()
     //   .getRepository(Post)

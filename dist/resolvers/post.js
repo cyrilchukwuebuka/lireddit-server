@@ -17,7 +17,6 @@ const Post_1 = require("../entities/Post");
 const type_graphql_1 = require("type-graphql");
 const isAuth_1 = require("../middleware/isAuth");
 const typeorm_1 = require("typeorm");
-const Updoot_1 = require("../entities/Updoot");
 let PostInput = class PostInput {
 };
 __decorate([
@@ -52,25 +51,20 @@ let PostResolver = class PostResolver {
         const isUpdoot = value !== -1;
         const realValue = isUpdoot ? 1 : -1;
         const { userId } = req.session;
-        await Updoot_1.Updoot.insert({
-            userId,
-            postId,
-            value: realValue,
-        });
         await (0, typeorm_1.getConnection)().query(`
 
     START TRANSACTION;
 
     insert into updoot ("userId", "postId", value)
     values (${userId},${postId},${realValue});
-    
+
     update post
     set points = points + ${realValue}
-    where id = ${postId};
-    
+    where _id = ${postId};
+
     COMMIT;
 
-    `, [userId, postId, realValue, realValue, postId]);
+    `);
         return true;
     }
     async posts(limit, cursor) {
@@ -96,7 +90,6 @@ let PostResolver = class PostResolver {
     limit $1
 
     `, replacements);
-        console.log(posts);
         return {
             posts: posts.slice(0, actualLimit),
             hasMore: posts.length === actualLimitPlusOne,
