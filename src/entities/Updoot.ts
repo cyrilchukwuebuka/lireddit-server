@@ -10,12 +10,7 @@ export class Updoot extends BaseEntity {
   @Column({ type: "int" })
   value: number;
 
-  // @Field()
-  // @PrimaryGeneratedColumn()
-  // _id: number;
-
   @Field()
-  // @Column({ type: "int" })
   @PrimaryColumn()
   userId: number;
 
@@ -24,7 +19,6 @@ export class Updoot extends BaseEntity {
   user: User;
 
   @Field()
-  // @Column({ type: "int" })
   @PrimaryColumn()
   postId: number;
 

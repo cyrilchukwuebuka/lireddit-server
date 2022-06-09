@@ -123,6 +123,7 @@ let UserResolver = class UserResolver {
             }
         }
         req.session.userId = user._id;
+        console.log(req.session);
         return {
             user,
         };
@@ -143,6 +144,7 @@ let UserResolver = class UserResolver {
             return (0, errorMessage_1.errorMessage)("password", "incorrect password");
         }
         req.session.userId = user._id;
+        console.log(req.session);
         return {
             user,
         };

@@ -17,7 +17,6 @@ import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
-import { User } from "../entities/User";
 @InputType()
 class PostInput {
   @Field()
@@ -53,6 +52,7 @@ export class PostResolver {
     const { userId } = req.session;
 
     const updoot = await Updoot.findOne({ where: { postId, userId } });
+    console.log(updoot)
 
     // await Updoot.insert({
     //   userId,
@@ -103,6 +103,9 @@ export class PostResolver {
       });
     }
 
+    const _post = await Post.findOne({where: { _id: postId }})
+    console.log(_post)
+
     // await getConnection().query(
     //   `
 
@@ -126,15 +129,20 @@ export class PostResolver {
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string
+    @Arg("cursor", () => String, { nullable: true }) cursor: string,
+    @Ctx() {req}: MyContext
   ): Promise<PaginatedPosts> {
     const actualLimit = Math.min(30, limit);
     const actualLimitPlusOne = actualLimit + 1;
 
     const replacements: any[] = [actualLimitPlusOne];
+    
+    if (req.session.userId) replacements.push(req.session.userId);
 
+    let cursorIdx = 3;
     if (cursor) {
       replacements.push(new Date(parseFloat(cursor)));
+      cursorIdx = replacements.length
     }
 
     const posts = await getConnection().query(
@@ -146,16 +154,22 @@ export class PostResolver {
       'email', u.email,
       'createdAt', u."createdAt",
       'updatedAt', u."updatedAt"
-    ) creator
+    ) creator,
+    ${
+      req.session.userId
+        ? `(select value from updoot where "userId" = $2 and "postId" = p._id) "voteStatus"`
+        : 'null as "voteStatus",'
+    }
     from post p
     inner join public.user u on u._id = p."creatorId"
-    ${cursor ? `where p."createdAt" < $2` : ""}
+    ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
     order by p."createdAt" DESC
     limit $1
 
     `,
       replacements
     );
+
 
     // const queryBuilder = getConnection()
     //   .getRepository(Post)
@@ -173,8 +187,6 @@ export class PostResolver {
     //     cursor: new Date(parseFloat(cursor)),
     //   });
     // }
-
-    // const posts = await queryBuilder.getMany();
 
     return {
       posts: posts.slice(0, actualLimit),

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { ApolloServer } from "apollo-server-express";
 import connectRedis from "connect-redis";
 import cors from "cors";
@@ -6,12 +7,9 @@ import express from "express";
 import session from "express-session";
 import Redis from 'ioredis';
 import morgan from "morgan";
-import "reflect-metadata";
 import { buildSchema } from "type-graphql";
 import { createConnection } from 'typeorm';
 import { COOKIE_NAME, __prod__ } from "./constants";
-import { Post } from "./entities/Post";
-import { Updoot } from "./entities/Updoot";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
