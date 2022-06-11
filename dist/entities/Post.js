@@ -42,7 +42,7 @@ __decorate([
 ], Post.prototype, "voteStatus", void 0);
 __decorate([
     (0, type_graphql_1.Field)(),
-    (0, typeorm_1.Column)({ type: "int" }),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], Post.prototype, "creatorId", void 0);
 __decorate([

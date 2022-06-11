@@ -26,7 +26,7 @@ export class Post extends BaseEntity {
   voteStatus!: number | null;
 
   @Field()
-  @Column({ type: "int" })
+  @Column()
   creatorId: number;
 
   @Field()

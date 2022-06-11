@@ -62,7 +62,6 @@ let UserResolver = class UserResolver {
         if (!req.session.userId) {
             return null;
         }
-        console.log(req.session.userId);
         return User_1.User.findOneBy({ _id: req.session.userId });
     }
     async changePassword(token, newPassword, { redis, req }) {

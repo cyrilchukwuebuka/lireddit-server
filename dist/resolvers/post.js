@@ -107,7 +107,7 @@ let PostResolver = class PostResolver {
     ) creator,
     ${req.session.userId
             ? `(select value from updoot where "userId" = $2 and "postId" = p._id) "voteStatus"`
-            : 'null as "voteStatus",'}
+            : 'null as "voteStatus"'}
     from post p
     inner join public.user u on u._id = p."creatorId"
     ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
@@ -120,8 +120,8 @@ let PostResolver = class PostResolver {
             hasMore: posts.length === actualLimitPlusOne,
         };
     }
-    post(_id) {
-        return Post_1.Post.findOneBy({ _id });
+    async post(_id) {
+        return Post_1.Post.findOne({ where: { _id }, relations: ["creator"] });
     }
     async createPost(input, { req }) {
         return Post_1.Post.create(Object.assign(Object.assign({}, input), { creatorId: req.session.userId })).save();
@@ -137,13 +137,8 @@ let PostResolver = class PostResolver {
         }
         return post;
     }
-    async deletePost(_id) {
-        try {
-            Post_1.Post.delete({ _id });
-        }
-        catch (error) {
-            return false;
-        }
+    async deletePost(_id, { req }) {
+        await Post_1.Post.delete({ _id, creatorId: req.session.userId });
         return true;
     }
 };
@@ -199,9 +194,11 @@ __decorate([
 ], PostResolver.prototype, "updatePost", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => Boolean),
+    (0, type_graphql_1.UseMiddleware)(isAuth_1.isAuth),
     __param(0, (0, type_graphql_1.Arg)("id", () => type_graphql_1.Int)),
+    __param(1, (0, type_graphql_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], PostResolver.prototype, "deletePost", null);
 PostResolver = __decorate([

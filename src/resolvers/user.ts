@@ -54,8 +54,7 @@ export class UserResolver {
     if (!req.session.userId) {
       return null;
     }
-
-    console.log(req.session.userId);
+    
     return User.findOneBy({ _id: req.session.userId });
   }
 
