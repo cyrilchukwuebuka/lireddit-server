@@ -213,26 +213,47 @@ export class PostResolver {
   @Mutation(() => Post, { nullable: true })
   async updatePost(
     @Arg("id", () => Int) _id: number,
-    @Arg("title", () => String, { nullable: true }) title: string
+    @Arg("title", () => String, { nullable: true }) title: string,
+    @Arg("text", () => String, { nullable: true }) text: string,
+    @Ctx() { req }: MyContext
   ): Promise<Post | null> {
-    const post = await Post.findOneBy({ _id });
-    if (!post) {
-      return null;
-    }
-    if (typeof title !== "undefined") {
-      post.title = title;
-      Post.update({ _id }, { title });
-    }
-    return post;
+    // const post = await Post.findOneBy({ _id });
+    // if (!post) {
+    //   return null;
+    // }
+    // if (typeof title !== "undefined") {
+    //   post.title = title;
+    //   post.text = text;
+    //   Post.update({ _id }, { title, text });
+    // }
+    // return post;
+
+    // OR
+
+    const result = await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ title, text })
+      .where('_id = :_id and "creatorId" = :creatorId', {
+        _id,
+        creatorId: req.session.userId,
+      })
+      .returning("*")
+      .execute();
+
+    return result.raw[0];
   }
 
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  async deletePost(@Arg("id", () => Int) _id: number, @Ctx() { req }: MyContext): Promise<boolean> {
+  async deletePost(
+    @Arg("id", () => Int) _id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<boolean> {
     // not cascade way
     // const post = await Post.findOne({where: { _id }});
     // if (!post) return false;
-    
+
     // if (post.creatorId !== req.session.userId) {
     //   throw new Error("not authorized")
     // }
@@ -245,7 +266,7 @@ export class PostResolver {
     // }
 
     // cascade way which requires adding the onDelete property in the Updoot entity
-    await Post.delete({ _id, creatorId: req.session.userId});
+    await Post.delete({ _id, creatorId: req.session.userId });
 
     return true;
   }
